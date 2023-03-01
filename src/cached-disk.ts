@@ -176,7 +176,14 @@ export abstract class CachedDisk<D extends Disk> extends Disk {
         if (this.isCleaning) return;
         this.isCleaning = true;
 
-        while (this.getCacheSize() > Config.get('settings.disk.cache.maxSize', 'number', 1000000000) * 0.75) {
+        while (
+            this.getCacheSize() >
+            Config.get(
+                'settings.disk.cache.reduceSize',
+                'number',
+                Config.get('settings.disk.cache.maxSize', 'number', 1000000000) * 0.75
+            )
+        ) {
             const toDelete = this.db.prepare('SELECT * FROM cache ORDER BY lastAccess ASC LIMIT 1').get() as CacheEntry;
             if (!toDelete) break;
             await promisify(unlink)(this.getPath(toDelete.cachedPath));
