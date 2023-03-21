@@ -1,5 +1,5 @@
 import { Config } from '@foal/core';
-import { Disk } from '@foal/storage';
+import { Disk, isFileDoesNotExist } from '@foal/storage';
 import { randomUUID } from 'crypto';
 import { createReadStream, createWriteStream, readFile, stat, unlink, writeFile } from 'fs';
 import { join } from 'path';
@@ -47,7 +47,8 @@ export abstract class CachedDisk<D extends Disk> extends Disk {
             return this.getFromCache(path, content);
         }
         const promise = this.disk.read(path, content);
-        void this.setToCache(path, promise);
+
+        void this.setToCache(path, promise); //.catch(error => console.error('Failed to cache file', error));
         return promise;
     }
 
@@ -144,7 +145,16 @@ export abstract class CachedDisk<D extends Disk> extends Disk {
         path: string,
         content: Promise<{ file: Type<'buffer' | 'stream'>; size: number }>
     ): Promise<void> {
-        const { file, size } = await content;
+        const { file, size } = await content.catch(error => {
+            if (isFileDoesNotExist(error)) {
+                return { file: null, size: 0 };
+            }
+            throw error;
+        });
+
+        if (!file) {
+            return;
+        }
 
         if (
             !this.isCleaning &&
@@ -186,7 +196,10 @@ export abstract class CachedDisk<D extends Disk> extends Disk {
         ) {
             const toDelete = this.db.prepare('SELECT * FROM cache ORDER BY lastAccess ASC LIMIT 1').get() as CacheEntry;
             if (!toDelete) break;
-            await promisify(unlink)(this.getPath(toDelete.cachedPath));
+            await promisify(unlink)(this.getPath(toDelete.cachedPath)).catch(err => {
+                console.error('Something went wrong while cleaning cache', toDelete, '\nError:\n', err);
+                throw err;
+            });
             this.db.prepare('DELETE FROM cache WHERE path = ?').run(toDelete.path);
             this.db.prepare('UPDATE cacheSize SET size = size - ?').run(toDelete.size);
         }
