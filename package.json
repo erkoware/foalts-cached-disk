@@ -20,7 +20,7 @@
         "file"
     ],
     "author": "l0tze",
-    "license": "ISC",
+    "license": "MIT",
     "bugs": {
         "url": "https://github.com/erkoware/foalts-cached-disk.git"
     },
