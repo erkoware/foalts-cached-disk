@@ -105,8 +105,8 @@ For more information, see the [documentation](https://foalts.org/docs/common/fil
 
 | Option | Type | Default | Description |
 | ------ | ---- | ------- | ----------- |
-| `cacheSize` | `number` | `1000000000` | The maximum size of the cache in bytes. |
-| `cachePath` | `string` | - | The path to the cache directory. |
+| `maxSize` | `number` | `1000000000` | The maximum size of the cache in bytes. |
+| `directory` | `string` | - | The path to the cache directory. |
 | `dbName` | `string` | `cache.db` | The name of the sqlite database. |
 
 ## Roadmap
