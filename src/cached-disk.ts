@@ -147,9 +147,8 @@ export abstract class CachedDisk<D extends Disk> extends Disk {
         const { file, size } = await content;
 
         if (
-            !!this.isCleaning &&
-            (this.db.prepare('SELECT size FROM cacheSize').get() as number) + size >
-                Config.get('settings.disk.cache.maxSize', 'number', 1000000000)
+            !this.isCleaning &&
+            this.getCacheSize() + size > Config.get('settings.disk.cache.maxSize', 'number', 1000000000)
         ) {
             this.cleanCache().catch(() => {
                 this.db.prepare('UPDATE cacheSize SET size = (SELECT SUM(size) FROM cache)').run();
@@ -177,10 +176,7 @@ export abstract class CachedDisk<D extends Disk> extends Disk {
         if (this.isCleaning) return;
         this.isCleaning = true;
 
-        while (
-            (this.db.prepare('SELECT size FROM cacheSize').get() as number) >
-            Config.get('cache.maxSize', 'number', 1000000000) * 0.75
-        ) {
+        while (this.getCacheSize() > Config.get('settings.disk.cache.maxSize', 'number', 1000000000) * 0.75) {
             const toDelete = this.db.prepare('SELECT * FROM cache ORDER BY lastAccess ASC LIMIT 1').get() as CacheEntry;
             if (!toDelete) break;
             await promisify(unlink)(this.getPath(toDelete.cachedPath));
@@ -198,5 +194,9 @@ export abstract class CachedDisk<D extends Disk> extends Disk {
             'You must provide a directory name when using cached storage (CachedDisk).'
         );
         return join(directory, path);
+    }
+
+    private getCacheSize(): number {
+        return (this.db.prepare('SELECT size FROM cacheSize').get() as { size: number }).size;
     }
 }
