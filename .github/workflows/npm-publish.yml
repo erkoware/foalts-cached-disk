@@ -38,3 +38,8 @@ jobs:
               run: npm dist-tag add foalts-cached-disk@rc stable
               env:
                   NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
+            - name: release
+              if: github.release.released
+              run: npm dist-tag add foalts-cached-disk@rc latest
+              env:
+                  NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
