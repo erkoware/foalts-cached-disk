@@ -42,7 +42,7 @@ While still keeping our application stateless.
 read the [documentation](https://foalts.org/docs/common/file-storage/local-and-cloud-storage) from FoalTS on File Storage.
 
 ```bash
-npm install --save @erkoware/cached-disk-foal
+npm install --save @erkoware/foalts-cached-disk
 ```
 
 ### As a specific disk
