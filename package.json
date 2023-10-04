@@ -8,6 +8,7 @@
     ],
     "scripts": {
         "build": "tsc",
+        "build:test": "tsc -p tsconfig.test.json",
         "test": "mocha 'lib/*.spec.js'"
     },
     "repository": {

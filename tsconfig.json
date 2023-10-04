@@ -10,5 +10,6 @@
         "declaration": true,
         "lib": ["es2021", "dom"]
     },
-    "include": ["src"]
+    "include": ["src"],
+    "exclude": ["**/*.spec.ts"]
 }
