@@ -25,6 +25,9 @@
         "url": "https://github.com/erkoware/foalts-cached-disk.git"
     },
     "homepage": "https://github.com/erkoware/foalts-cached-disk.git",
+    "publishConfig": {
+        "access": "public"
+    },
     "engines": {
         "node": ">=16.0.0"
     },
