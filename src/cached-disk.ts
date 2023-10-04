@@ -1,9 +1,9 @@
 import { Config } from '@foal/core';
 import { Disk } from '@foal/storage';
 import { randomUUID } from 'crypto';
-import { createReadStream, createWriteStream, readFile, stat, unlink, writeFile } from 'fs';
+import { createReadStream, createWriteStream, existsSync, readFile, stat, unlink, writeFile } from 'fs';
 import { join } from 'path';
-import { pipeline, Readable } from 'stream';
+import { Readable, pipeline } from 'stream';
 import { promisify } from 'util';
 import Database = require('better-sqlite3');
 
@@ -12,6 +12,8 @@ type CacheEntry = { path: string; cachedPath: string; size: number; lastAccess: 
 
 export abstract class CachedDisk<D extends Disk> extends Disk {
     protected abstract disk: D;
+
+    private directory: string;
 
     private isCleaning = false;
 
@@ -26,6 +28,19 @@ export abstract class CachedDisk<D extends Disk> extends Disk {
         this._db.exec('CREATE TABLE IF NOT EXISTS cacheSize (id NUMBER PRIMARY KEY, size INTEGER)');
         this._db.exec('INSERT OR IGNORE INTO cacheSize VALUES (1, 0)');
         return this._db;
+    }
+
+    constructor() {
+        super();
+        this.directory = Config.getOrThrow(
+            'settings.disk.cache.directory',
+            'string',
+            'You must provide a directory name when using cached storage (CachedDisk).'
+        );
+        existsSync(this.directory) ||
+            (() => {
+                throw new Error("The cache directory doesn't exist");
+            })();
     }
 
     write(
@@ -195,12 +210,7 @@ export abstract class CachedDisk<D extends Disk> extends Disk {
     }
 
     private getPath(path: string): string {
-        const directory = Config.getOrThrow(
-            'settings.disk.cache.directory',
-            'string',
-            'You must provide a directory name when using cached storage (CachedDisk).'
-        );
-        return join(directory, path);
+        return join(this.directory, path);
     }
 
     private getCacheSize(): number {
