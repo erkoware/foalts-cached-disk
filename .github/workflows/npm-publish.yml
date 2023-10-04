@@ -29,9 +29,11 @@ jobs:
                   node-version: 16
                   registry-url: https://registry.npmjs.org/
             - run: npm ci
-            - run: npm publish --tag rc
+            - run: npm publish --access public --tag rc
+              env:
+                  NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
             - name: release
               if: github.release.released
               run: npm dist-tag add foalts-cached-disk@rc stable
               env:
-                  NODE_AUTH_TOKEN: ${{secrets.npm_token}}
+                  NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
