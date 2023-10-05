@@ -159,7 +159,9 @@ export abstract class CachedDisk<D extends Disk> extends Disk {
         path: string,
         content: Promise<{ file: Type<'buffer' | 'stream'>; size: number }>
     ): Promise<void> {
-        const { file, size } = await content;
+        const { file, size } = await content.catch(() => ({ file: undefined, size: undefined }));
+
+        if (!file) return;
 
         if (
             !this.isCleaning &&
@@ -175,13 +177,28 @@ export abstract class CachedDisk<D extends Disk> extends Disk {
         const cachedPath = this.getPath(name);
 
         if (file instanceof Buffer) {
-            await promisify(writeFile)(cachedPath, file);
-        } else {
-            await promisify(pipeline)(file, createWriteStream(cachedPath));
+            return promisify(writeFile)(cachedPath, file)
+                .then(() => {
+                    this.db.prepare('UPDATE cacheSize SET size = size + ?').run(size);
+                    this.db
+                        .prepare('INSERT OR REPLACE INTO cache VALUES (?, ?, ?, ?)')
+                        .run(path, name, size, Date.now());
+                })
+                .catch(() => promisify(unlink)(cachedPath).catch());
         }
-
-        this.db.prepare('UPDATE cacheSize SET size = size + ?').run(size);
-        this.db.prepare('INSERT OR REPLACE INTO cache VALUES (?, ?, ?, ?)').run(path, name, size, Date.now());
+        return promisify(pipeline)(
+            file,
+            // Do not kill the process (and crash the server) if the stream emits an error.
+            // Note: users can still add other listeners to the stream to "catch" the error.
+            // Note: error streams are unlikely to occur (most "createWriteStream" errors are simply thrown).
+            // TODO: test this line.
+            createWriteStream(cachedPath).on('error', () => {})
+        )
+            .then(() => {
+                this.db.prepare('UPDATE cacheSize SET size = size + ?').run(size);
+                this.db.prepare('INSERT OR REPLACE INTO cache VALUES (?, ?, ?, ?)').run(path, name, size, Date.now());
+            })
+            .catch(() => promisify(unlink)(cachedPath).catch());
     }
 
     /**
