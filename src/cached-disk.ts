@@ -13,8 +13,6 @@ type CacheEntry = { path: string; cachedPath: string; size: number; lastAccess: 
 export abstract class CachedDisk<D extends Disk> extends Disk {
     protected abstract disk: D;
 
-    private directory: string;
-
     private isCleaning = false;
 
     private _db: Database.Database | undefined;
@@ -32,12 +30,7 @@ export abstract class CachedDisk<D extends Disk> extends Disk {
 
     constructor() {
         super();
-        this.directory = Config.getOrThrow(
-            'settings.disk.cache.directory',
-            'string',
-            'You must provide a directory name when using cached storage (CachedDisk).'
-        );
-        existsSync(this.directory) ||
+        existsSync(this.getPath('')) ||
             (() => {
                 throw new Error("The cache directory doesn't exist");
             })();
@@ -227,7 +220,12 @@ export abstract class CachedDisk<D extends Disk> extends Disk {
     }
 
     private getPath(path: string): string {
-        return join(this.directory, path);
+        const directory = Config.getOrThrow(
+            'settings.disk.cache.directory',
+            'string',
+            'You must provide a directory name when using cached storage (CachedDisk).'
+        );
+        return join(directory, path);
     }
 
     private getCacheSize(): number {
