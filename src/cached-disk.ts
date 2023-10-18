@@ -1,9 +1,9 @@
 import { Config } from '@foal/core';
 import { Disk } from '@foal/storage';
 import { randomUUID } from 'crypto';
-import { createReadStream, createWriteStream, readFile, stat, unlink, writeFile } from 'fs';
+import { createReadStream, createWriteStream, existsSync, readFile, stat, unlink, writeFile } from 'fs';
 import { join } from 'path';
-import { pipeline, Readable } from 'stream';
+import { Readable, pipeline } from 'stream';
 import { promisify } from 'util';
 import Database = require('better-sqlite3');
 
@@ -26,6 +26,14 @@ export abstract class CachedDisk<D extends Disk> extends Disk {
         this._db.exec('CREATE TABLE IF NOT EXISTS cacheSize (id NUMBER PRIMARY KEY, size INTEGER)');
         this._db.exec('INSERT OR IGNORE INTO cacheSize VALUES (1, 0)');
         return this._db;
+    }
+
+    constructor() {
+        super();
+        existsSync(this.getPath('')) ||
+            (() => {
+                throw new Error("The cache directory doesn't exist");
+            })();
     }
 
     write(
@@ -144,7 +152,9 @@ export abstract class CachedDisk<D extends Disk> extends Disk {
         path: string,
         content: Promise<{ file: Type<'buffer' | 'stream'>; size: number }>
     ): Promise<void> {
-        const { file, size } = await content;
+        const { file, size } = await content.catch(() => ({ file: undefined, size: undefined }));
+
+        if (!file) return;
 
         if (
             !this.isCleaning &&
@@ -160,13 +170,28 @@ export abstract class CachedDisk<D extends Disk> extends Disk {
         const cachedPath = this.getPath(name);
 
         if (file instanceof Buffer) {
-            await promisify(writeFile)(cachedPath, file);
-        } else {
-            await promisify(pipeline)(file, createWriteStream(cachedPath));
+            return promisify(writeFile)(cachedPath, file)
+                .then(() => {
+                    this.db.prepare('UPDATE cacheSize SET size = size + ?').run(size);
+                    this.db
+                        .prepare('INSERT OR REPLACE INTO cache VALUES (?, ?, ?, ?)')
+                        .run(path, name, size, Date.now());
+                })
+                .catch(() => promisify(unlink)(cachedPath).catch());
         }
-
-        this.db.prepare('UPDATE cacheSize SET size = size + ?').run(size);
-        this.db.prepare('INSERT OR REPLACE INTO cache VALUES (?, ?, ?, ?)').run(path, name, size, Date.now());
+        return promisify(pipeline)(
+            file,
+            // Do not kill the process (and crash the server) if the stream emits an error.
+            // Note: users can still add other listeners to the stream to "catch" the error.
+            // Note: error streams are unlikely to occur (most "createWriteStream" errors are simply thrown).
+            // TODO: test this line.
+            createWriteStream(cachedPath).on('error', () => {})
+        )
+            .then(() => {
+                this.db.prepare('UPDATE cacheSize SET size = size + ?').run(size);
+                this.db.prepare('INSERT OR REPLACE INTO cache VALUES (?, ?, ?, ?)').run(path, name, size, Date.now());
+            })
+            .catch(() => promisify(unlink)(cachedPath).catch());
     }
 
     /**

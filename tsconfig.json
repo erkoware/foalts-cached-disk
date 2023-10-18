@@ -1,16 +1,15 @@
 {
     "compilerOptions": {
-        "outDir": "./lib/",
-        "baseUrl": ".",
+        "outDir": "lib",
         "module": "commonjs",
         "target": "es2021",
         "emitDecoratorMetadata": true,
         "experimentalDecorators": true,
         "strict": true,
         "strictPropertyInitialization": false,
-        "sourceMap": true,
         "declaration": true,
         "lib": ["es2021", "dom"]
     },
-    "include": ["index.ts", "src/**/*.ts", "src/**/*.tsx"]
+    "include": ["src"],
+    "exclude": ["**/*.spec.ts"]
 }

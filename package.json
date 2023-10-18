@@ -1,13 +1,14 @@
 {
     "name": "@erkoware/foalts-cached-disk",
-    "version": "0.2.0",
+    "version": "0.2.1-rc.9",
     "description": "Cached Disk for FoalTS",
     "main": "lib/index.js",
     "files": [
-        "lib/"
+        "lib"
     ],
     "scripts": {
         "build": "tsc",
+        "build:test": "tsc -p tsconfig.test.json",
         "test": "mocha 'lib/*.spec.js'"
     },
     "repository": {
@@ -25,6 +26,9 @@
         "url": "https://github.com/erkoware/foalts-cached-disk.git"
     },
     "homepage": "https://github.com/erkoware/foalts-cached-disk.git",
+    "publishConfig": {
+        "access": "public"
+    },
     "engines": {
         "node": ">=16.0.0"
     },
