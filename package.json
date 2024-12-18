@@ -1,6 +1,6 @@
 {
     "name": "@erkoware/foalts-cached-disk",
-    "version": "0.2.1-rc.9",
+    "version": "0.3.0",
     "description": "Cached Disk for FoalTS",
     "main": "lib/index.js",
     "files": [
